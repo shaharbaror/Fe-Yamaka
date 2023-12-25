@@ -1,77 +1,57 @@
-from ultralytics import YOLO
 import cv2
-import math
-from PIL import Image
-import PIL
-# start webcam
-cap = cv2.VideoCapture(0)
-cap.set(3, 640)
-cap.set(4, 480)
-
-# model
-model = YOLO("yolo-Weights/yolov8n.pt")
-
-# object classes
-classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
-              "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-              "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-              "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
-              "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
-              "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
-              "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
-              "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
-              "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-              "teddy bear", "hair drier", "toothbrush"
-              ]
-
-has_Phone = False
-
-while True:
-    success, img = cap.read()
-    results = model(img, stream=True)
-
-    # coordinates
-    for r in results:
-        boxes = r.boxes
-
-        for box in boxes:
-            # confidence
-            confidence = math.ceil((box.conf[0] * 100)) / 100
-            print("Confidence --->", confidence)
-
-            # class name
-            # print("cls----->",int(box.cls[0]))
-            cls = int(box.cls[0])
-            # print("Class name -->", classNames[cls])
-            if cls == 67:
-
-                if not has_Phone:
-
-                    Image.fromarray(img).save("phon.jpg")
-                    exit(0)
-
-                    has_Phone = True
-                # bounding box
-                x1, y1, x2, y2 = box.xyxy[0]
-                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
-
-                # put box in cam
-                cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
+import numpy as np
 
 
+class Cam:
+    def __init__(self, cam_number):
+        self.cam_number = cam_number
+        self.cam = cv2.VideoCapture(cam_number)
 
-                # object details
-                org = [x1, y1]
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                fontScale = 1
-                color = (255, 0, 0)
-                thickness = 2
+    @staticmethod
+    def mask_red(frame):
 
-                cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # lower boundary RED color range values; Hue (0 - 10)
+        lower1 = np.array([0, 70, 50])
+        upper1 = np.array([20, 255, 255])
 
-    cv2.imshow('Webcam', img)
-    if cv2.waitKey(1) == ord('q'):
-        break
+        # upper boundary RED color range values; Hue (160 - 180)
+        lower2 = np.array([160, 70,50])
+        upper2 = np.array([179, 255, 255])
 
-cap.release()
-cv2.destroyAllWindows()
+        lower_mask = cv2.inRange(hsv_frame, lower1, upper1)
+        upper_mask = cv2.inRange(hsv_frame, lower2, upper2)
+
+        full_mask = lower_mask + upper_mask
+        return full_mask    # returns the mask of the color red
+
+    @staticmethod
+    def get_optical_flow(current_frame, last_frame):
+        mask = np.absolute(current_frame - last_frame)
+        lower1 = np.array([100, 100, 100])
+        upper1 = np.array([255, 255, 255])
+        first_mask = cv2.inRange(mask, lower1, upper1)
+
+
+        return first_mask
+
+
+def main():
+    cam = Cam(0)
+    res, frame = cam.cam.read()
+    while res:
+        last_frame = frame  # get the last frame for movement detection
+        res, frame = cam.cam.read()
+        optical_mask = cam.get_optical_flow(frame, last_frame)
+        masked_red = cam.mask_red(frame)    # get only the red parts in the frame
+        cv2.imshow("optical_mask", optical_mask)
+        cv2.imshow("red_masked", masked_red)    # show the frame masked to read
+        cv2.imshow("frame", frame)
+
+        if cv2.waitKey(1) == 27:
+            break
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
