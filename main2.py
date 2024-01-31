@@ -1,5 +1,7 @@
 # import the necessary packages
 from collections import deque
+
+import numpy
 from imutils.video import VideoStream
 import numpy as np
 import argparse
@@ -8,7 +10,7 @@ import imutils
 import time
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-v", "--video", default="./RedBol.mp4",
+ap.add_argument("-v", "--video", default="./red_ball.mp4",
 	help="path to the (optional) video file")
 ap.add_argument("-b", "--buffer", type=int, default=64,
 	help="max buffer size")
@@ -71,10 +73,17 @@ while True:
 		# centroid
 		c = max(cnts, key=cv2.contourArea)
 		((x, y), radius) = cv2.minEnclosingCircle(c)
+		siz = radius ** 2 * numpy.pi * 0.7
+		do_circle = True
+		if siz > cv2.contourArea(c):
+			print("not a circle")
+			print(cv2.contourArea(c)," + ",siz)
+			do_circle = False
+
 		M = cv2.moments(c)
 		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 		# only proceed if the radius meets a minimum size
-		if radius > 10:
+		if radius > 10 and do_circle:
 			# draw the circle and centroid on the frame,
 			# then update the list of tracked points
 			cv2.circle(frame, (int(x), int(y)), int(radius),
