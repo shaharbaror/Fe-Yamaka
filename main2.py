@@ -10,7 +10,7 @@ import imutils
 import time
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-v", "--video", default="./red_ball.mp4",
+ap.add_argument("-v", "--video", default="./nus.mp4",
 	help="path to the (optional) video file")
 ap.add_argument("-b", "--buffer", type=int, default=64,
 	help="max buffer size")
@@ -24,6 +24,9 @@ greenLower = (0, 50, 70)
 greenUpper = (10, 255, 255)
 redLower2 = (160, 86, 6)
 redUpper2 = (179, 255, 255)
+
+last_bol = []
+
 
 pts = deque(maxlen=args["buffer"])
 # if a video path was not supplied, grab the reference
@@ -68,30 +71,33 @@ while True:
 	center = None
 	# only proceed if at least one contour was found
 	if len(cnts) > 0:
+
 		# find the largest contour in the mask, then use
 		# it to compute the minimum enclosing circle and
 		# centroid
-		c = max(cnts, key=cv2.contourArea)
-		((x, y), radius) = cv2.minEnclosingCircle(c)
-		siz = radius ** 2 * numpy.pi * 0.7
-		do_circle = True
-		if siz > cv2.contourArea(c):
-			print("not a circle")
-			print(cv2.contourArea(c)," + ",siz)
-			do_circle = False
-
-		M = cv2.moments(c)
-		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-		# only proceed if the radius meets a minimum size
-		if radius > 10 and do_circle:
+		circles = []
+		for c in cnts:
+			((x, y), radius) = cv2.minEnclosingCircle(c)
+			#c = max(cnts, key=cv2.contourArea)
+			siz = radius ** 2 * numpy.pi * 0.7
+			if siz < cv2.contourArea(c) and cv2.contourArea(c) < siz * 1.5 and radius > 6 :
+				print("not a circle")
+				print(cv2.contourArea(c)," + ",siz)
+				circles.append([c, [x, y, radius]])
+		for c in circles:
+			M = cv2.moments(c[0])
+			center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+			# only proceed if the radius meets a minimum size
+			circle_stats = c[1]
 			# draw the circle and centroid on the frame,
 			# then update the list of tracked points
-			cv2.circle(frame, (int(x), int(y)), int(radius),
+			cv2.circle(frame, (int(circle_stats[0]), int(circle_stats[1])), int(circle_stats[2]),
 					   (0, 255, 255), 2)
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
 			#CHECK IF ITS A CIRCLE BY PINPOINTING POINTS ON THE RADIUS AND IF MOST POINTS ARE RED CONCIDER IT AS A CIRCLE
-
+			if last_bol == []:
+				last_bol[]
 
 
 
