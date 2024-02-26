@@ -10,7 +10,7 @@ import imutils
 import time
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-v", "--video", default="./nus.mp4",
+ap.add_argument("-v", "--video", default="",
 	help="path to the (optional) video file")
 ap.add_argument("-b", "--buffer", type=int, default=64,
 	help="max buffer size")
@@ -96,8 +96,7 @@ while True:
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
 			#CHECK IF ITS A CIRCLE BY PINPOINTING POINTS ON THE RADIUS AND IF MOST POINTS ARE RED CONCIDER IT AS A CIRCLE
-			if last_bol == []:
-				last_bol[]
+
 
 
 
