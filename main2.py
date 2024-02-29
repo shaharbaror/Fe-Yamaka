@@ -10,7 +10,7 @@ import imutils
 import time
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-v", "--video", default="",
+ap.add_argument("-v", "--video", default="yus.mp4",
 	help="path to the (optional) video file")
 ap.add_argument("-b", "--buffer", type=int, default=64,
 	help="max buffer size")
@@ -79,7 +79,7 @@ while True:
 		for c in cnts:
 			((x, y), radius) = cv2.minEnclosingCircle(c)
 			#c = max(cnts, key=cv2.contourArea)
-			siz = radius ** 2 * numpy.pi * 0.7
+			siz = radius ** 2 * numpy.pi * 0.75
 			if siz < cv2.contourArea(c) and cv2.contourArea(c) < siz * 1.5 and radius > 6 :
 				print("not a circle")
 				print(cv2.contourArea(c)," + ",siz)
