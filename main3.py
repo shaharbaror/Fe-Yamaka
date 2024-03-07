@@ -4,6 +4,8 @@ from imutils.video import VideoStream
 import argparse
 import imutils
 import time
+import datetime
+
 from typing import List
 
 
@@ -23,12 +25,14 @@ class Camera:
 
 # The class that defines a circle for use
 class Circle:
-    def __init__(self, x=None, y=None, radius=None, velocity=None, pure_object=None):
+    def __init__(self, x=None, y=None, radius=None, velocity_x=None, velocity_y=None, time_of_record=None, pure_object=None):
         self.x = x
         self.y = y
         self.radius = radius
-        self.velocity = velocity
+        self.velocity_x = velocity_x
+        self.velocity_y = velocity_y
         self.pure_object = pure_object
+        self.time_of_record = time_of_record
 
     def calc_velocity(self, x, y, time_between):
         # Calculate the distance between the given position and the last recorded position of the circle
@@ -94,20 +98,19 @@ class Maskinator (Camera):
         return frame, mask
 
     # Get a frame and return all the circles that are in it
-    def locate_circles(self, frame) -> List[Circle]:
+    def locate_circles(self, frame) -> List[List[float]]:
         circles = []
 
         cnts = cv.findContours(frame.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
 
         for c in cnts:
+
             ((x, y), radius) = cv.minEnclosingCircle(c)
-            # c = max(cnts, key=cv2.contourArea)
             supposed_area = radius ** 2 * np.pi * 0.75
-            if supposed_area < cv.contourArea(c) and cv.contourArea(c) < supposed_area * 1.5 and radius > 6:
-                print("not a circle")
-                print(cv.contourArea(c), " + ", supposed_area)
-                circles.append(Circle(x=x, y=y, radius=radius, pure_object=c))
+
+            if supposed_area < cv.contourArea(c) < supposed_area * 1.5 and radius > 6:
+                circles.append([x, y, datetime.datetime.now()])
 
         return circles
 
@@ -121,15 +124,80 @@ class Maskinator (Camera):
             cv.circle(frame, (center), int(c.radius), (0, 255, 255), 2)
             cv.circle(frame, center, 5, (0, 0, 255), -1)
 
+    # Gets 3 frames with circles detected in them, and identify which of these circles are the same
+    def identify_circles(self, circle_in_frame1, circle_in_frame2, circle_in_frame3, time_between1, time_between2):
+        """
+        :param circle_in_frame1: the list of all circles in the first frame
+        :param circle_in_frame2: the list of all circles in the second frame
+        :param circle_in_frame3: the list of all circles in the third frame
+        :param time_between1: the time between the first and second frame
+        :param time_between2: the time between the second and third frame
 
+        :type circle_in_frame1: List[List[float]]
+        :type circle_in_frame2: List[List[float]]
+        :type circle_in_frame3: List[List[float]]
+        :type time_between1: datetime.timedelta
+        :type time_between2: datetime.timedelta
+
+        :return: List[Circle]
+        """
+
+        def calc_next_pos(circle1, circle2):
+            x_distance = circle1[0] - circle2[0]
+            y_distance = circle1[1] - circle2[1]
+
+            velocity_x = x_distance / time_between1
+            velocity_y = y_distance / time_between1
+
+            next_circle_x = circle2[0] + velocity_x * time_between2
+            next_circle_y = circle2[1] + velocity_y * time_between2 - 5 * np.power(time_between2)
+            next_circle = [next_circle_x, next_circle_y]
+
+            if next_circle in circle_in_frame3:
+                return Circle(x=next_circle_x,
+                              y=next_circle_y,
+                              radius=circle2[2],
+                              velocity_x=velocity_x,
+                              velocity_y=velocity_y,
+                              time_of_record=datetime.datetime.now())
+            return None
+
+        returned_circles = []
+
+        for i in range(len(circle_in_frame1)):
+            for x in range(len(circle_in_frame2)):
+                returned_circles.append(calc_next_pos(circle_in_frame1[i], circle_in_frame2[x]))
+
+        return returned_circles
+
+
+class P:
+    def __init__(self, val=None, t=None, nexto=None):
+        self.circ = val
+        self.t = t
+        self.next = nexto
 def main():
     cam = Maskinator("./yus.mp4")
-
+    circles = P()
+    pos1 = circles
+    done = 0
     while True:
         frame, mask = cam.get_frame()
-        circles = cam.locate_circles(mask)
-        cam.pinpoint_cirlces(circles, frame)
+        frame_circles = cam.locate_circles(mask)
+        if 0 < done:
 
+            pos1.next = P(frame_circles, datetime.datetime.now())
+            pos1 = pos1.next
+        if done > 4:
+
+            circles = circles.next
+            pos2 = circles.next
+            print(circles.circ, pos2.circ, pos1.circ, pos2.t - circles.t, pos1.t - pos2.t)
+            circle = cam.identify_circles(circles.circ, pos2.circ, pos1.circ, pos2.t - circles.t, pos1.t - pos2.t)
+            print(circle)
+            cam.pinpoint_cirlces(circle, frame)
+
+        done += 1
         cv.imshow("frame", frame)
         # if the user pressed "Q" end the program
         if cv.waitKey(1) & 0xFF == ord("q"):
