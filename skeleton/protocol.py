@@ -5,10 +5,12 @@ class Protocol:
 
     @staticmethod
     def receive_messages(soc: s.socket):
-        length = soc.recv(4).decode()
-        print(length)
+        length = soc.recv(10).decode()
+        if length == '':
+            return ''
         length = int(length)
-        return soc.recv(length)
+        print(length)
+        return soc.recv(length).decode()
 
     @staticmethod
     def prepare_message(message):
@@ -18,6 +20,6 @@ class Protocol:
         :type message: str
         :return: bytes
         """
-        length = str(len(message)).zfill(4)
+        length = str(len(message)).zfill(10)
         return (f"{length}{message}").encode()
 

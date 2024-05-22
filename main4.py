@@ -20,7 +20,7 @@ def ShowFrame(frame_name: str,cam:Maskinator):
     cv.imshow(f"{frame_name}-norm", frame)
 
 def main():
-    cam01 = Maskinator("./3DCameras/cam_01/recording03_Trim.mp4")
+    cam01 = Maskinator("./3DCameras/cam01/recording03_Trim.mp4")
     cam02 = Maskinator("./3DCameras/cam02/recording01_Trim.mp4")
 
 
