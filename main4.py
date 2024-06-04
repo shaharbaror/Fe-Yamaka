@@ -32,7 +32,7 @@ def locate_circles(frame) -> List[List[float]] or None:
         ((x, y), radius) = cv.minEnclosingCircle(c)
         supposed_area = radius ** 2 * np.pi * 0.5
 
-        if supposed_area < cv.contourArea(c) < supposed_area * 1.5 and radius > 6:
+        if supposed_area < cv.contourArea(c) < supposed_area * 1.5 and radius > 12:
             circles.append([x, y, radius, time.time()])
 
     return circles
@@ -52,18 +52,39 @@ def delta_calculation(old_frame, new_frame):
     return delta
 
 def calculate_distance(cam01:Maskinator, cam02:Maskinator, found_circs1, found_circs2):
-    width1 = cam01.cam.get(3)
-    width2 = cam02.cam.get(3)
+    width1 = 1240
+    width2 = 1240
+    height = 1080
     height1 = width1 / 2
     height2 = width2 / 2
-    dist_from_middle1 = np.absolute(found_circs1[0][0] - height1)
-    dist_from_middle2 = np.absolute(found_circs2[0][0] - height2)
+
+    dist_from_middle1 = found_circs1[0][0] - height1
+    dist_from_middle2 = found_circs2[0][0] - height2
+
+
+    tan_of1 = np.absolute(dist_from_middle1) / height1
+    tan_of2 = np.absolute(dist_from_middle2) / height2
+    print(f"the tans are: {tan_of1}, {tan_of2}")
+    distance_between_cameras = 0.16
+    z_distance = 0
 
     # h = X1 / [ tan(a) + tan(b) ]
     # dist = h / cos(a)
+    if dist_from_middle1 <= 0 <= dist_from_middle2:
+        z_distance = distance_between_cameras / (tan_of1 + tan_of2)
+    elif dist_from_middle1 <= 0 and dist_from_middle2 <= 0:
+        z_distance = distance_between_cameras / (tan_of1 - tan_of2)
+    elif dist_from_middle1 >= 0 and dist_from_middle2 >= 0:
+        z_distance = distance_between_cameras / (tan_of2 - tan_of1)
 
-    print(f"cam-width:{width1}, distance from the middle:{dist_from_middle1}")
-    print(f"cam-width*****2:{width2}, distance from the middle:{dist_from_middle2}")
+    distance_of_cam1 = z_distance / np.cos(np.tanh(tan_of1))
+    distance_of_cam2 = z_distance / np.cos(np.tanh(tan_of2))
+
+    print(f"The height distance is: {z_distance}. \n The distance of camera 1 from the object is: {distance_of_cam1}. \n The distance of camera 2 is: {distance_of_cam2}")
+
+
+
+
 
 
 
@@ -75,9 +96,13 @@ class Linkudo:
 
 
 def main():
-    cam01 = Maskinator("./3DCameras/cam01/recording03_Trim.mp4")
-    cam02 = Maskinator("./3DCameras/cam02/recording01_Trim.mp4")
+    cam01 = Maskinator("./3DCameras/cam01/new_rec1.mp4")
+    cam02 = Maskinator("./3DCameras/cam02/new_rec1.mp4")
 
+    lasto_framo, _ = ShowFrame(cam01)
+    lasto_framo, _ = ShowFrame(cam01)
+    lasto_framo, _ = ShowFrame(cam01)
+    lasto_framo, _ = ShowFrame(cam01)
     lasto_framo, _ = ShowFrame(cam01)
     lasto_framo2, _ = ShowFrame(cam02)
 
@@ -88,6 +113,9 @@ def main():
     list2 = Linkudo(lasto_framo2)
     pos2 = list2
     count2 = 0
+
+
+    delay = True
 
 
     while True:
@@ -145,8 +173,12 @@ def main():
         cv.imshow("furam", shown_frame)
         cv.imshow("turam", curr_frame2)
 
-        if cv.waitKey(0) & 0xFF == ord("q"):
+        key = cv.waitKey(int(delay))
+        if key & 0xFF == ord("q"):
             break
+        elif key & 0xFF == ord("k"):
+            delay = not delay
+
 
 
 if "__main__" == __name__:
