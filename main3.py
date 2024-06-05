@@ -80,7 +80,7 @@ class Maskinator (Camera):
         frame = frame[1] if self.is_not_camera else frame
         if frame is None:
             return frame
-        #frame = imutils.resize(frame, width=1080) #THIS IS VERY IMPORTANT!! ++++++++++++++++++++++
+        frame = imutils.resize(frame, width=1240) #THIS IS VERY IMPORTANT!! ++++++++++++++++++++++
         # mask the frame here and return the masked version
         if not is_masked:
             return frame

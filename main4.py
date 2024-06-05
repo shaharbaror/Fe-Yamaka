@@ -61,6 +61,9 @@ def calculate_distance(cam01:Maskinator, cam02:Maskinator, found_circs1, found_c
     dist_from_middle1 = found_circs1[0][0] - height1
     dist_from_middle2 = found_circs2[0][0] - height2
 
+    height_dist1 = (height / 2) - found_circs1[0][1]
+    height_dist2 = (height / 2) - found_circs2[0][1]
+
 
     tan_of1 = np.absolute(dist_from_middle1) / height1
     tan_of2 = np.absolute(dist_from_middle2) / height2
@@ -80,6 +83,10 @@ def calculate_distance(cam01:Maskinator, cam02:Maskinator, found_circs1, found_c
     distance_of_cam1 = z_distance / np.cos(np.tanh(tan_of1))
     distance_of_cam2 = z_distance / np.cos(np.tanh(tan_of2))
 
+    height_of_cam1 = z_distance * np.sin(np.tanh(height_dist1 / height1))
+    height_of_cam2 = z_distance * np.sin(np.tanh(height_dist2 / height2))
+    print(f"TTTTTThe y is {height_of_cam1}")
+
     print(f"The height distance is: {z_distance}. \n The distance of camera 1 from the object is: {distance_of_cam1}. \n The distance of camera 2 is: {distance_of_cam2}")
 
 
@@ -96,13 +103,9 @@ class Linkudo:
 
 
 def main():
-    cam01 = Maskinator("./3DCameras/cam01/new_rec1.mp4")
-    cam02 = Maskinator("./3DCameras/cam02/new_rec1.mp4")
+    cam01 = Maskinator("./3DCameras/Cam01/new_rec1_Trim.mp4")
+    cam02 = Maskinator("./3DCameras/Cam02/new_rec2_Trim.mp4")
 
-    lasto_framo, _ = ShowFrame(cam01)
-    lasto_framo, _ = ShowFrame(cam01)
-    lasto_framo, _ = ShowFrame(cam01)
-    lasto_framo, _ = ShowFrame(cam01)
     lasto_framo, _ = ShowFrame(cam01)
     lasto_framo2, _ = ShowFrame(cam02)
 
