@@ -255,7 +255,7 @@ class SingleCamera (Maskinator):
                         message = Protocol.prepare_message("circCords")
                         message = message + Protocol.prepare_message(str(real_findings)) + Protocol.prepare_message(str(time.time()))
                         client.send_message(message)
-
+                print(len(latest_frame))
                 cv.imshow("v", image_delta)
                 cv.imshow("n", latest_frame)
 

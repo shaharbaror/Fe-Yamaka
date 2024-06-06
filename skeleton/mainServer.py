@@ -9,6 +9,11 @@ import cv2 as cv
 import time
 
 
+class LinkedList:
+    def __init__(self, value = None, next_block = None):
+        self.value = value
+        self.next_block = next_block
+
 class Server:
     def __init__(self, address, port):
         """
@@ -41,7 +46,7 @@ class Server:
             return readable
 
 
-class MainServer (Server):
+class MainServer(Server):
     def __init__(self, address, port):
         """
             :param address: Servers address
@@ -51,11 +56,12 @@ class MainServer (Server):
             :type port: int
         """
         super().__init__(address, port)
+        self.linked_list = LinkedList()
+        self.pos = self.linked_list
 
     def respond(self):
         readable = super().respond()
-
-        received_axis = []
+        received_axis = [None,None]
         axis_counter = 0
         if readable:
             for client in readable:
@@ -68,20 +74,24 @@ class MainServer (Server):
                         time_of_cords = Protocol.receive_messages(client)
                         print(f"Got Cords: {axis}")
                         # add the coordinates and increase the counter
-
-                        received_axis.append([axis, time_of_cords])
+                        if axis[0] == [1]:
+                            received_axis[0] = [axis[1:], time_of_cords]
+                        else:
+                            received_axis[1] = [axis[1:], time_of_cords]
 
                         axis_counter += 1
 
+                    elif data == "ready_calculate":
+                        client.send_message(Protocol.prepare_message(str(self.linked_list.value)))
+                        self.linked_list = self.linked_list.next_block
 
-                if axis_counter > 1:
-                    #  call the client that calculates positions ____________________________________
-                    pass
-                axis_counter = 0
-                received_axis = []
+            if axis_counter > 1:
+                #  call the client that calculates positions ____________________________________
+                self.pos = LinkedList(received_axis, LinkedList())
+                self.pos = self.pos.next_block
 
-
-
+            axis_counter = 0
+            received_axis = []
 
 
 def main():
@@ -90,6 +100,6 @@ def main():
         server.accept_connections()
         server.respond()
 
+
 if __name__ == "__main__":
     main()
-
