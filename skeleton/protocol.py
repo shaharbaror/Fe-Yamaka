@@ -6,6 +6,7 @@ class Protocol:
     @staticmethod
     def receive_messages(soc: s.socket):
         length = soc.recv(10).decode()
+        print(length)
         if length == '':
             return ''
         length = int(length)

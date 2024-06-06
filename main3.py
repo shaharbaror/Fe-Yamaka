@@ -80,7 +80,7 @@ class Maskinator (Camera):
         frame = frame[1] if self.is_not_camera else frame
         if frame is None:
             return frame
-        #frame = imutils.resize(frame, width=1080) #THIS IS VERY IMPORTANT!! ++++++++++++++++++++++
+        frame = imutils.resize(frame, width=1240) #THIS IS VERY IMPORTANT!! ++++++++++++++++++++++
         # mask the frame here and return the masked version
         if not is_masked:
             return frame
@@ -108,7 +108,7 @@ class Maskinator (Camera):
         for c in cnts:
 
             ((x, y), radius) = cv.minEnclosingCircle(c)
-            supposed_area = radius ** 2 * np.pi * 0.75
+            supposed_area = radius ** 2 * np.pi * 0.6
 
             if supposed_area < cv.contourArea(c) < supposed_area * 1.5 and radius > 6:
                 circles.append([x, y, radius, time.time()])
