@@ -239,7 +239,7 @@ class SingleCamera (Maskinator):
 
             if frame_count > 2:
                 linked_list = linked_list.nextt
-
+                print(linked_list.value)
                 image_delta = self.delta_calculation(linked_list.value, pos1.value)
 
                 found_circles = self.locate_circles(image_delta)
@@ -253,11 +253,12 @@ class SingleCamera (Maskinator):
                     # send the server the coordinates that the camera recognized
                     if real_findings:
                         message = Protocol.prepare_message("circCords")
-                        message = message + Protocol.prepare_message(str(real_findings) + Protocol.prepare_message(str(time.time())))
+                        message = message + Protocol.prepare_message(str(real_findings)) + Protocol.prepare_message(str(time.time()))
                         client.send_message(message)
 
                 cv.imshow("v", image_delta)
                 cv.imshow("n", latest_frame)
+
 
             frame_count += 1
 
