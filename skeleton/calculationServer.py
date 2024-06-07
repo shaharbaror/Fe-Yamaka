@@ -8,12 +8,21 @@ class CalcServer (Server):
     pass
 
 
+class LinkedList:
+    def __init__(self, value = None, nextItem = None):
+        self.value = value
+        self.nextItem = nextItem
+
+
 class CalcClient:
     def __init__(self):
         self.s = s.socket()
         self.s.connect(("127.0.0.1", 8000))
 
     def calculate_positions(self, cam1_positions, cam2_positions): # [[x,y], time]
+        cam01_positions = []
+        cam02_positions = []
+
         width1 = 1240
         width2 = 1240
         height = 1080
@@ -37,6 +46,8 @@ class CalcClient:
                         (tan_of2 - tan_of1) * (dist_from_middle1 >= 0 and dist_from_middle2 >= 0))
             z_distance = distance_between_cameras / modifier
 
+            if z_distance <= 0:
+                return None, None
             distance_of_cam1 = z_distance / np.cos(np.tanh(tan_of1))
             distance_of_cam2 = z_distance / np.cos(np.tanh(tan_of2))
 
@@ -50,14 +61,86 @@ class CalcClient:
         for circle1 in cam1_positions:
             for circle2 in cam2_positions:
                 if np.absolute(circle1[1] - circle2[1]) < 20:
-                    circle1_pos, circle2_pos = position_of_point(cam1_positions, cam2_positions)
+                    circle1_pos, circle2_pos = position_of_point(circle1, circle2)
+                    if circle1_pos and circle2_pos:
+                        cam01_positions.append([circle1_pos, circle1[2]])   # [positions, time of record]
+                        cam02_positions.append([circle2_pos, circle1[2]])
                     print(f"""Camera number 1 calculated stats: {circle1_pos}. \n
                            Camera number 2 calculated stats: {circle2_pos}.""")
+        return cam01_positions, cam02_positions
+
+    def identify_projectiles(self, position1, position2, position3):
+        time_between_frame12 = position2[1] - position1[1]
+        time_between_frame23 = position3[1] - position2[1]
+        gravity = -9.81
+        accelaration_calc = gravity * (time_between_frame23 ** 2) / 2
+        mistake_modifier = [0.1, 0.1, 0.1]
+
+        # find y speed:
+        def verification(frame1, frame2):
+            """
+            :param frame1: The position of the object in frame 1
+            :param frame2: The position of the object in frame 2
+            :param frame3: The position of the object in frame 3
+            """
+            # since the velocity is the delta velocity
+            # the calculation WILL be wrong since its not really the speed on frame 2
+            vector_velocity = [(frame2[0] - frame1[0]) / time_between_frame12,
+                               (frame2[1] - frame1[1]) / time_between_frame12,
+                               (frame2[2] - frame1[2]) / time_between_frame12]  # calculate the x,y,z velocity
+            estimated_position = []
+            estimated_position[0] = frame2[0] + vector_velocity[0] * time_between_frame23
+            # x1 = x0 + v0*t + at^(2) / 2
+            estimated_position[1] = (frame2[1] + vector_velocity[1] * time_between_frame23 + accelaration_calc)
+
+            estimated_position[2] = frame2[2] + vector_velocity[2] * time_between_frame23
+
+            # calculate how far is the ball from the estimation, if it is close:
+            # then return the ball as an object with position, time of record, and velocity
+            for frame3 in position3:
+                if np.absolute(np.subtract(estimated_position, frame3)) < mistake_modifier:
+                    # [[x, y, z], [Vx, Vy, Vz], time of record]
+                    return [frame2, vector_velocity, position2[1]]
+            return None
+
+        balls_to_return = []
+
+        for ball1 in position1:
+            for ball2 in position2:
+                is_ball = verification(ball1, ball2)
+                if is_ball:
+                    balls_to_return.append(is_ball)
+
+        return balls_to_return
+
 
     def send_message(self, message):
         self.s.send(message)
         data = Protocol.receive_messages(self.s)
-        self.calculate_positions(data[0], data[1])
+        return data
+
+    def run_client(self):
+        list1 = LinkedList()
+        pos1 = list1
+        count = 0
+        while True:
+            # send a request for main server to give new cords. returns: [[cam1,time], [cam2,time]]
+            returned_value = self.send_message("ready_calculate")
+            new_coordinates1, new_coordinates2 = self.calculate_positions(returned_value[0], returned_value[1])
+            pos1.nextItem = LinkedList(new_coordinates1)
+            pos1 = pos1.nextItem
+
+            if count >= 3:
+                list1 = list1.nextItem
+                # now start calculating trajectory of the object
+                projectiles_to_alarm = self.identify_projectiles(list1.value, list1.nextItem.value, pos1.value)
+                print(f"these projectiles are real: {projectiles_to_alarm}")
+                if projectiles_to_alarm:
+                    # after the projectiles had been identified, send them back to the server
+                    self.send_message(Protocol.prepare_message("alarm") + Protocol.prepare_message(str(projectiles_to_alarm)))
+
+            count += 1
+
 
 
 
@@ -65,7 +148,7 @@ class CalcClient:
 
 def main():
     calc_client = CalcClient()
-    calc_client.send_message()
+    calc_client.run_client()
 
 
 if __name__ == "__main__":

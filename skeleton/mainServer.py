@@ -87,8 +87,11 @@ class MainServer(Server):
 
             if axis_counter > 1:
                 #  call the client that calculates positions ____________________________________
-                self.pos = LinkedList(received_axis, LinkedList())
+                self.pos.next_block = LinkedList(received_axis)
                 self.pos = self.pos.next_block
+
+                if not self.linked_list.value:
+                    self.linked_list = self.linked_list.next_block
 
             axis_counter = 0
             received_axis = []
