@@ -18,6 +18,7 @@ class CalcClient:
     def __init__(self):
         self.s = s.socket()
         self.s.connect(("127.0.0.1", 8000))
+        # Also connect to the second server
 
     def calculate_positions(self, cam1_positions, cam2_positions): # [[x,y], time]
         cam01_positions = []
