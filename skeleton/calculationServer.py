@@ -52,10 +52,10 @@ class CalcClient:
             distance_of_cam1 = z_distance / np.cos(np.tanh(tan_of1))
             distance_of_cam2 = z_distance / np.cos(np.tanh(tan_of2))
 
-            y_of_object_cam1 = distance_of_cam1 * np.sin(np.tanh(height_dist1 / height1))
+            y_of_object_cam1 = distance_of_cam1 * np.sin(np.tanh(height_dist1 / np.sqrt(height1**2 + dist_from_middle1**2)))
             x_of_object_cam1 = z_distance * tan_of1
 
-            y_of_object_cam2 = distance_of_cam2 * np.sin(np.tanh(height_dist2 / height2))
+            y_of_object_cam2 = distance_of_cam2 * np.sin(np.tanh(height_dist2 / np.sqrt(height2**2 + dist_from_middle2**2)))
             x_of_object_cam2 = z_distance * tan_of2
             return [x_of_object_cam1, y_of_object_cam1, z_distance], [x_of_object_cam2, y_of_object_cam2, z_distance]
 
