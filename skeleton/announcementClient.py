@@ -30,7 +30,10 @@ class AnnouncementClient:
                 print("authentication successfull!")
                 exit_app()
                 return
-            messagebox.showwarning("Input Error", "Please fill out both fields")
+            elif username and password:
+                messagebox.showwarning("Input Error", "your username/password are longer than 10 characters")
+            else:
+                messagebox.showwarning("Input Error", "Please fill out both fields")
             return
 
         def exit_app():
@@ -42,12 +45,12 @@ class AnnouncementClient:
         root.title("Login Page")
         root.geometry("300x200")
 
-        username_label = tk.Label(root, text='First Name')
+        username_label = tk.Label(root, text='Username')
         username_label.pack(pady=5)
         username_entry = tk.Entry(root)
         username_entry.pack(pady=5)
 
-        password_label = tk.Label(root, text='Last Name')
+        password_label = tk.Label(root, text='Password')
         password_label.pack(pady=5)
         password_entry = tk.Entry(root, show="*")
         password_entry.pack(pady=5)
@@ -92,8 +95,7 @@ class AnnouncementClient:
                     selected_location = locations[selected_index]
                     if selected_location not in current_locations:
                         current_locations.append(selected_location)
-                    messagebox.showinfo("Location Selected",
-                                        f"ID: {selected_location['id']}\nName: {selected_location['name']}")
+
                 except IndexError:
                     messagebox.showwarning("Selection Error", "Please select a location from the list")
 
@@ -105,7 +107,6 @@ class AnnouncementClient:
                         current_locations.remove(selected_location)
                 except Exception:
                     messagebox.showwarning("Selection Error", "Please Select A locaiton that is on your list")
-
 
             data_label = tk.Label(new_window, text="Select a location from the list below:", font=("Helvetica", 14))
             data_label.pack(pady=10)

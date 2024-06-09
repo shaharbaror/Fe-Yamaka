@@ -1,11 +1,91 @@
 import socket as s
 import numpy as np
-from protocol import Protocol
+import mysql.connector
+import json
 
 from mainServer import Server
+from protocol import Protocol
+class DataBase:
+    def __int__(self):
+        # Connect to the MySQL server
+        self.conn = mysql.connector.connect(
+            host="localhost",
+            user="your_username",
+            password="your_password",
+            database="your_database"
+        )
+
+        self.cursor = self.conn.cursor()
+
+        # Create a table
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            username VARCHAR(255) NOT NULL,
+                            password VARCHAR(255) NOT NULL,
+                            locations TEXT
+                        )''')
+
+        # Commit changes
+        self.conn.commit()
+
+    # NEEDS DECRYPTION
+    def insert_new_user(self, username, password, locations):
+        try:
+            users_query = f"SELECT * FROM users WHERE first_letter = {username[0]}"
+            self.cursor.execute(users_query)
+            rows = self.cursor.fetchall()
+            if any(d["username"] == username for d in rows):
+                return "username already exist"
+
+            insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
+            user_data = (username, password, json.dumps(locations), 1)
+
+            # insert into the database
+            self.cursor.execute(insert_query, user_data)
+            self.conn.commit()
+
+            # insert user data into the location query
+            location_query = f"INSERT INTO locations (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
+
+        except Exception:
+            return "couldn't add user"
+        return "sign up successful"
+
+    def authenticate_user(self, username, password):
+        insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
+        try:
+            users_query = f"SELECT * FROM users WHERE username = {username}"
+            self.cursor.execute(users_query)
+            user = self.cursor.fetchall()
+
+            if user["password"] == password:
+                user_data = (user["username"], user["password"], user["locations"], 1)
+                self.cursor.execute(insert_query, user_data)
+                self.conn.commit()
+                return "Login Successful"
+        except Exception:
+            return "Couldn't fetch data"
+
+    def update_user_status(self, username, password, locations, is_online):
+        insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
+        try:
+            users_query = f"SELECT * FROM users WHERE username = {username}"
+            self.cursor.execute(users_query)
+            user = self.cursor.fetchall()
+            if user["password"] == password:
+                user_data = (user["username"], user["password"], locations, is_online)
+                self.cursor.execute(insert_query, user_data)
+                self.conn.commit()
+                return "change successful"
+            return "access denied!"
+        except Exception:
+            return "change failed"
 
 
-class AnnouncementServer(Server):
+
+
+
+class AnnouncementServer(Server, DataBase):
     def __init__(self, address, port):
         super().__init__(address, port)
         self.projectile_list = []
@@ -49,10 +129,16 @@ class AnnouncementServer(Server):
                     if data == "newPos":
                         projectiles_detected = Protocol.receive_messages(client)
                         self.calculate_trajectory(projectiles_detected)
-
-                    if data == "status":
+                    elif data == "signup":
                         user_data = Protocol.receive_messages(client)
-                        client.send_message(Protocol.prepare_message(self.what_to_send_to_client(user_data)))
+                        self.insert_new_user(user_data["username"], user_data["password"], user_data["locations"])
+                    elif data == "authenticate":
+                        user_data = Protocol.receive_messages(client)
+                        self.authenticate_user(user_data["username"], user_data["password"])
+                    elif data == "change":
+                        user_data = Protocol.receive_messages(client)
+                        self.update_user_status(user_data["username"], user_data["password"], user_data["locations"], user_data["is_online"])
+
 
 def main():
     server = AnnouncementServer("0.0.0.0", 8001)
