@@ -110,12 +110,14 @@ class AnnouncementClient:
 
             data_label = tk.Label(new_window, text="Select a location from the list below:", font=("Helvetica", 14))
             data_label.pack(pady=10)
-
+            current_label = tk.Label(new_window, text='locations you have')
+            current_label.pack(pady=5)
             current_locations_listbox = tk.Listbox(new_window, height=10)
             for current_location in current_locations:
                 current_locations_listbox.insert(tk.END, f"ID:{current_location['id']} - Name: {current_location['name']}")
             current_locations_listbox.pack(pady=10)
-
+            other_label = tk.Label(new_window, text='locations you can have')
+            other_label.pack(pady=5)
             location_listbox = tk.Listbox(new_window, height=10)
             for location in locations:
                 location_listbox.insert(tk.END, f"ID: {location['id']} - Name: {location['name']}")
