@@ -1,9 +1,10 @@
 import socket as s
 import numpy as np
 import time
+import nacl
 
 from mainServer import Server
-from protocol import Protocol
+from protocol import Protocol, Encryption
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
@@ -41,61 +42,6 @@ class DataBase:
                 return l["position"]
         return None
 
-    # NEEDS DECRYPTION
-    # def insert_new_user(self, username, password, locations):
-    #     try:
-    #         # This whole thing needs to be async since its way too slow
-    #         users = self.database["users"]
-    #         new_user = users.find_one({"name":username})
-    #         if new_user == ([] or None):
-    #             try:
-    #                 new_user_query = {"username":username, "password": password, "locations":locations, "is_online":1}
-    #                 users.insert_one(new_user_query)
-    #                 return "insertion succeeded"
-    #             except Exception as e:
-    #                 print(e)
-    #                 return "insertion failed"
-    #
-    #
-    #     except Exception:
-    #         return "couldn't add user"
-    #     return "sign up successful"
-    #
-    # def authenticate_user(self, username, password):
-    #
-    #     try:
-    #         users = self.database["users"]
-    #         authenticate_user = users.find_one({"username":username,"password":password, "is_online":0})
-    #         if authenticate_user == ([] or None):
-    #             return "Authentication Failed"
-    #         else:
-    #             return "Authentication Successful"
-    #     except Exception as e:
-    #         print(e)
-    #         return "Couldn't fetch data"
-    #
-    # def update_user_status(self, username, password, locations, is_online):
-    #     # insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
-    #     # try:
-    #     #     users_query = f"SELECT * FROM users WHERE username = {username}"
-    #     #     self.cursor.execute(users_query)
-    #     #     user = self.cursor.fetchall()
-    #     #     if user["password"] == password:
-    #     #         user_data = (user["username"], user["password"], locations, is_online)
-    #     #         self.cursor.execute(insert_query, user_data)
-    #     #         self.conn.commit()
-    #     #         return "change successful"
-    #     #     return "access denied!"
-    #     # except Exception:
-    #     #     return "change failed"
-
-
-
-
-
-
-
-
 
 class AnnouncementServer(Server, DataBase):
     def __init__(self, address, port):
@@ -108,7 +54,7 @@ class AnnouncementServer(Server, DataBase):
     def alert_city(self, city):
         for p in self.position_list:
             if p["city"] == city:
-                p["client"].send(Protocol.prepare_message("alert"))
+                self.encryption.send_encrypted_msg("alert", p["client"])
 
     def calculate_trajectory(self, projectiles_detected):
         landing_positions = []
@@ -156,10 +102,13 @@ class AnnouncementServer(Server, DataBase):
                         self.calculate_trajectory(projectiles_detected)
                     elif data == "signup":
                         user_data = Protocol.receive_messages(client)
-                        self.position_list.append({"city":user_data, "client": client})
+                        self.position_list.append({"city":user_data[0], "client": client, "key": user_data[1]})
+                    elif data == "new_key":
+                        self.encryption.receive_public_key(client)
+                        self.encryption.send_key(client)
                     elif data == "leave":
                         user_data = Protocol.receive_messages(client)
-                        self.position_list.remove({"city":user_data, "client": client})
+                        self.position_list.remove({"city":user_data[0], "client": client, "key": user_data[1]})
 
 
 def main():

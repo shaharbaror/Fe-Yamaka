@@ -1,12 +1,14 @@
 import json
+import random
 import socket as s
 from select import select
-from protocol import Protocol
+from protocol import Protocol, Encryption
 from main3 import Maskinator
 import multiprocessing
 import imutils
-import cv2 as cv
 import time
+
+
 
 
 class LinkedList:
@@ -31,6 +33,8 @@ class Server:
         self.s.listen(9)
         self.clients = {}
         self.running = True
+        self.encryption = Encryption()
+        self.encryption.create_keys()
 
     def accept_connections(self):
 
@@ -80,9 +84,10 @@ class MainServer(Server):
                             received_axis[1] = [axis[1:], time_of_cords]
 
                         axis_counter += 1
-
+                    if data == "give_key":
+                        self.encryption.send_encrypted_msg(str(self.encryption.public_key_bytes), client)
                     elif data == "ready_calculate":
-                        client.send_message(Protocol.prepare_message(str(self.linked_list.value)))
+                        self.encryption.send_encrypted_msg(str(self.linked_list.value), client)
                         self.linked_list = self.linked_list.next_block
 
             if axis_counter > 1:

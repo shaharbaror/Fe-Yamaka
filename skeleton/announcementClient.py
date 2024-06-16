@@ -1,5 +1,5 @@
 import socket as s
-from protocol import Protocol
+from protocol import Protocol, Encryption
 import tkinter as tk
 from tkinter import messagebox
 
@@ -167,17 +167,36 @@ class AlertClient:
         self.s.connect((address, port))
         self.location = location
         self.is_running = True
+        self.encryption = Encryption()
+        self.encryption.create_keys()
+
+    def setup_encryption(self):
+        self.encryption.send_key(self.s)
+        response = Protocol.receive_messages(self.s)
+        if response == "new_key":
+            self.encryption.receive_public_key(self.s)
+            return True
+        else:
+            return False
 
     def register_to_server(self):
-        self.s.send(Protocol.prepare_message("signup") + Protocol.prepare_message(self.location))
+        encrypted = False
+        while not encrypted:
+            encrypted = self.setup_encryption()
+        self.s.send(Protocol.prepare_message("signup") + self.encryption.create_msg(self.location, self.s))
 
     def run(self):
+
         self.register_to_server()
+
         while True:
             try:
-                message = Protocol.receive_messages(self.s)
-                if message:
+                enc_message = Protocol.receive_messages(self.s)
+                decr_message = self.encryption.decrypt(enc_message, self.s)
+                if decr_message == "alert":
                     print("ALERT")
+                elif decr_message == "stop":
+                    print("no alert")
             except Exception as e:
                 print(e)
 
