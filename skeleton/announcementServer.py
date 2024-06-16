@@ -156,10 +156,10 @@ class AnnouncementServer(Server, DataBase):
                         self.calculate_trajectory(projectiles_detected)
                     elif data == "signup":
                         user_data = Protocol.receive_messages(client)
-                        self.position_list.append({"city":user_data[0], "client": client})
+                        self.position_list.append({"city":user_data, "client": client})
                     elif data == "leave":
                         user_data = Protocol.receive_messages(client)
-                        self.position_list.remove({"city":user_data[0], "client": client})
+                        self.position_list.remove({"city":user_data, "client": client})
 
 
 def main():

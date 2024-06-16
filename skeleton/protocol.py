@@ -5,13 +5,17 @@ class Protocol:
 
     @staticmethod
     def receive_messages(soc: s.socket):
-        length = soc.recv(10).decode()
+        try:
+            length = soc.recv(10).decode()
 
-        if length == '':
-            return ''
-        length = int(length)
+            if length == '':
+                return ''
+            length = int(length)
 
-        return soc.recv(length).decode()
+            return soc.recv(length).decode()
+        except Exception as e:
+            print(e)
+            return None
 
     @staticmethod
     def prepare_message(message):

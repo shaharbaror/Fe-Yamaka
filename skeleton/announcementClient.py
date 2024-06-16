@@ -160,9 +160,34 @@ class AnnouncementClient:
         # The norm is that the client is always listening and once there is a problem then the server sends
         pass
 
+
+class AlertClient:
+    def __init__(self, address, port, location = None):
+        self.s = s.socket()
+        self.s.connect((address, port))
+        self.location = location
+        self.is_running = True
+
+    def register_to_server(self):
+        self.s.send(Protocol.prepare_message("signup") + Protocol.prepare_message(self.location))
+
+    def run(self):
+        self.register_to_server()
+        while True:
+            try:
+                message = Protocol.receive_messages(self.s)
+                if message:
+                    print("ALERT")
+            except Exception as e:
+                print(e)
+
+
+
+
 def main():
-    announcemnet_client = AnnouncementClient("0.0.0.0", 8002)
-    announcemnet_client.run_client()
+    # announcemnet_client = AnnouncementClient("0.0.0.0", 8002)
+    # announcemnet_client.run_client()
+    alert_client = AlertClient("0.0.0.0", 8002, "Tel-Aviv")
 
 if __name__ == "__main__":
     main()
