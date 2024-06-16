@@ -188,6 +188,7 @@ def main():
     # announcemnet_client = AnnouncementClient("0.0.0.0", 8002)
     # announcemnet_client.run_client()
     alert_client = AlertClient("0.0.0.0", 8002, "Tel-Aviv")
+    alert_client.run()
 
 if __name__ == "__main__":
     main()
