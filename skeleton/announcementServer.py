@@ -1,85 +1,97 @@
 import socket as s
 import numpy as np
-import mysql.connector
-import json
+import time
 
 from mainServer import Server
 from protocol import Protocol
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from bson.objectid import ObjectId
+uri = "mongodb+srv://shaharbaror1:5CKlFQnQ3rK4TLNe@cluster0.tvuwsdx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+
+#5CKlFQnQ3rK4TLNe
+#shaharbaror1
 class DataBase:
-    def __int__(self):
-        # Connect to the MySQL server
-        self.conn = mysql.connector.connect(
-            host="localhost",
-            user="your_username",
-            password="your_password",
-            database="your_database"
-        )
 
-        self.cursor = self.conn.cursor()
+    def __init__(self):
+        # Connect to the mongodb Server
+        self.client = None
+        self.database = None
+        self.is_connected = False
+        self.cities = None
 
-        # Create a table
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                            id INT AUTO_INCREMENT PRIMARY KEY,
-                            username VARCHAR(255) NOT NULL,
-                            password VARCHAR(255) NOT NULL,
-                            locations TEXT
-                        )''')
+    def connect_to_database(self):
+        self.client = MongoClient(uri, server_api=ServerApi('1'))
+        try:
+            self.database = self.client["fulldb"]
+            self.is_connected = True
+            return "connection successful"
+        except Exception as e:
+            print(e)
+        return "connection failed"
 
-        # Commit changes
-        self.conn.commit()
+    def get_all_cities(self):
+        locations = self.database["locations"]
+        self.cities = locations.find()  # get all of the registered locations from the db
+
+    def get_in_pos(self, position):
+        for l in self.cities:
+            if l["position-min"] < position < l["position-max"]:
+                return l["position"]
+        return None
 
     # NEEDS DECRYPTION
-    def insert_new_user(self, username, password, locations):
-        try:
-            users_query = f"SELECT * FROM users WHERE first_letter = {username[0]}"
-            self.cursor.execute(users_query)
-            rows = self.cursor.fetchall()
-            if any(d["username"] == username for d in rows):
-                return "username already exist"
+    # def insert_new_user(self, username, password, locations):
+    #     try:
+    #         # This whole thing needs to be async since its way too slow
+    #         users = self.database["users"]
+    #         new_user = users.find_one({"name":username})
+    #         if new_user == ([] or None):
+    #             try:
+    #                 new_user_query = {"username":username, "password": password, "locations":locations, "is_online":1}
+    #                 users.insert_one(new_user_query)
+    #                 return "insertion succeeded"
+    #             except Exception as e:
+    #                 print(e)
+    #                 return "insertion failed"
+    #
+    #
+    #     except Exception:
+    #         return "couldn't add user"
+    #     return "sign up successful"
+    #
+    # def authenticate_user(self, username, password):
+    #
+    #     try:
+    #         users = self.database["users"]
+    #         authenticate_user = users.find_one({"username":username,"password":password, "is_online":0})
+    #         if authenticate_user == ([] or None):
+    #             return "Authentication Failed"
+    #         else:
+    #             return "Authentication Successful"
+    #     except Exception as e:
+    #         print(e)
+    #         return "Couldn't fetch data"
+    #
+    # def update_user_status(self, username, password, locations, is_online):
+    #     # insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
+    #     # try:
+    #     #     users_query = f"SELECT * FROM users WHERE username = {username}"
+    #     #     self.cursor.execute(users_query)
+    #     #     user = self.cursor.fetchall()
+    #     #     if user["password"] == password:
+    #     #         user_data = (user["username"], user["password"], locations, is_online)
+    #     #         self.cursor.execute(insert_query, user_data)
+    #     #         self.conn.commit()
+    #     #         return "change successful"
+    #     #     return "access denied!"
+    #     # except Exception:
+    #     #     return "change failed"
 
-            insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
-            user_data = (username, password, json.dumps(locations), 1)
 
-            # insert into the database
-            self.cursor.execute(insert_query, user_data)
-            self.conn.commit()
 
-            # insert user data into the location query
-            location_query = f"INSERT INTO locations (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
 
-        except Exception:
-            return "couldn't add user"
-        return "sign up successful"
-
-    def authenticate_user(self, username, password):
-        insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
-        try:
-            users_query = f"SELECT * FROM users WHERE username = {username}"
-            self.cursor.execute(users_query)
-            user = self.cursor.fetchall()
-
-            if user["password"] == password:
-                user_data = (user["username"], user["password"], user["locations"], 1)
-                self.cursor.execute(insert_query, user_data)
-                self.conn.commit()
-                return "Login Successful"
-        except Exception:
-            return "Couldn't fetch data"
-
-    def update_user_status(self, username, password, locations, is_online):
-        insert_query = "INSERT INTO users (username, password, locations, is_online) VALUES (%s, %s, %s, %i)"
-        try:
-            users_query = f"SELECT * FROM users WHERE username = {username}"
-            self.cursor.execute(users_query)
-            user = self.cursor.fetchall()
-            if user["password"] == password:
-                user_data = (user["username"], user["password"], locations, is_online)
-                self.cursor.execute(insert_query, user_data)
-                self.conn.commit()
-                return "change successful"
-            return "access denied!"
-        except Exception:
-            return "change failed"
 
 
 
@@ -89,7 +101,14 @@ class AnnouncementServer(Server, DataBase):
     def __init__(self, address, port):
         super().__init__(address, port)
         self.projectile_list = []
+        self.position_list = []
+        self.when_to_check = time.time() + 5
         #need a map of all the places names and their positions
+
+    def alert_city(self, city):
+        for p in self.position_list:
+            if p["city"] == city:
+                p["client"].send(Protocol.prepare_message("alert"))
 
     def calculate_trajectory(self, projectiles_detected):
         landing_positions = []
@@ -111,12 +130,18 @@ class AnnouncementServer(Server, DataBase):
             if is_on_list:
                 landing_positions.remove(i)
 
+        for l in landing_positions:
+            city_to_warn = self.get_in_pos(l)
+            self.alert_city(city_to_warn)
+
+        # remove all of the old projectiles
+        curr_time = time.time()
+        if self.when_to_check <= curr_time:
+            for p in self.projectile_list:
+                if p[1] < curr_time:
+                    self.projectile_list.remove(p)
         # add all the extra detections to the list of projectiles
         self.projectile_list.extend(landing_positions)
-
-    def what_to_send_to_client(self, user_data):
-        # send the client the data about the projectiles that are heading twards the requested location
-        pass
 
     def respond(self):
         readable = super().respond()
@@ -131,13 +156,10 @@ class AnnouncementServer(Server, DataBase):
                         self.calculate_trajectory(projectiles_detected)
                     elif data == "signup":
                         user_data = Protocol.receive_messages(client)
-                        self.insert_new_user(user_data["username"], user_data["password"], user_data["locations"])
-                    elif data == "authenticate":
+                        self.position_list.append({"city":user_data[0], "client": client})
+                    elif data == "leave":
                         user_data = Protocol.receive_messages(client)
-                        self.authenticate_user(user_data["username"], user_data["password"])
-                    elif data == "change":
-                        user_data = Protocol.receive_messages(client)
-                        self.update_user_status(user_data["username"], user_data["password"], user_data["locations"], user_data["is_online"])
+                        self.position_list.remove({"city":user_data[0], "client": client})
 
 
 def main():
