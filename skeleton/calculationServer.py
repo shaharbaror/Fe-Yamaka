@@ -20,6 +20,9 @@ class CalcClient:
         self.s.connect(("127.0.0.1", 8000))
         # Also connect to the second server
 
+        self.s2 = s.socket()
+        self.s2.connect(("127.0.0.1", 8002))
+
     def calculate_positions(self, cam1_positions, cam2_positions): # [[x,y], time]
         cam01_positions = []
         cam02_positions = []
@@ -64,8 +67,8 @@ class CalcClient:
                 if np.absolute(circle1[1] - circle2[1]) < 20:
                     circle1_pos, circle2_pos = position_of_point(circle1, circle2)
                     if circle1_pos and circle2_pos:
-                        cam01_positions.append([circle1_pos, circle1[2]])   # [positions, time of record]
-                        cam02_positions.append([circle2_pos, circle1[2]])
+                        cam01_positions.append([circle1_pos + cam1_positions[2], cam1_positions[1]])   # [positions, time of record]
+                        cam02_positions.append([circle2_pos + cam2_positions[2], cam2_positions[1]])
                     print(f"""Camera number 1 calculated stats: {circle1_pos}. \n
                            Camera number 2 calculated stats: {circle2_pos}.""")
         return cam01_positions, cam02_positions
@@ -138,7 +141,7 @@ class CalcClient:
                 print(f"these projectiles are real: {projectiles_to_alarm}")
                 if projectiles_to_alarm:
                     # after the projectiles had been identified, send them back to the server
-                    self.send_message(Protocol.prepare_message("alarm") + Protocol.prepare_message(str(projectiles_to_alarm)))
+                    self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str(projectiles_to_alarm)))
 
             count += 1
 
