@@ -2,10 +2,10 @@ import socket as s
 from mainServer import Server
 from protocol import Protocol
 import numpy as np
+from ast import literal_eval
 
 
-class CalcServer (Server):
-    pass
+
 
 
 class LinkedList:
@@ -17,15 +17,46 @@ class LinkedList:
 class CalcClient:
     def __init__(self):
         self.s = s.socket()
-        self.s.connect(("127.0.0.1", 8000))
+        self.s.connect(("172.16.20.69", 8000))
         # Also connect to the second server
 
         self.s2 = s.socket()
         self.s2.connect(("127.0.0.1", 8002))
 
+
+
+
+    def send_message(self, message):
+        self.s.send(message)
+        data = Protocol.receive_messages(self.s)
+        return data
+
+    def run_client(self):
+        list1 = LinkedList()
+        pos1 = list1
+        count = 0
+        while True:
+            # send a request for main server to give new cords. returns: [[cam1,time], [cam2,time]]
+            returned_value = self.send_message("ready_calculate")
+
+
+
+class CalcServer(Server):
+    def __init__(self, address, port):
+        super().__init__(address, port)
+        self.list1 = LinkedList()
+        self.pos1 = self.list1
+        self.count = 0
+        self.s2 = s.socket()
+        self.s2.connect(("172.16.20.69", 8001))
+
+
     def calculate_positions(self, cam1_positions, cam2_positions): # [[x,y], time]
         cam01_positions = []
         cam02_positions = []
+
+        print("cam1", cam1_positions)
+        print("cam2", cam2_positions)
 
         width1 = 1240
         width2 = 1240
@@ -62,10 +93,12 @@ class CalcClient:
             x_of_object_cam2 = z_distance * tan_of2
             return [x_of_object_cam1, y_of_object_cam1, z_distance], [x_of_object_cam2, y_of_object_cam2, z_distance]
 
-        for circle1 in cam1_positions:
-            for circle2 in cam2_positions:
+        for circle1 in cam1_positions[0]:
+            for circle2 in cam2_positions[0]:
+                print(f"{circle1} is a circle \n {circle2} is also a circle")
                 if np.absolute(circle1[1] - circle2[1]) < 20:
                     circle1_pos, circle2_pos = position_of_point(circle1, circle2)
+                    print(f"ahoo {circle1_pos} ahoo {circle2_pos}")
                     if circle1_pos and circle2_pos:
                         cam01_positions.append([circle1_pos + cam1_positions[2], cam1_positions[1]])   # [positions, time of record]
                         cam02_positions.append([circle2_pos + cam2_positions[2], cam2_positions[1]])
@@ -118,41 +151,52 @@ class CalcClient:
         return balls_to_return
 
 
-    def send_message(self, message):
-        self.s.send(message)
-        data = Protocol.receive_messages(self.s)
-        return data
 
-    def run_client(self):
-        list1 = LinkedList()
-        pos1 = list1
-        count = 0
-        while True:
-            # send a request for main server to give new cords. returns: [[cam1,time], [cam2,time]]
-            returned_value = self.send_message("ready_calculate")
-            new_coordinates1, new_coordinates2 = self.calculate_positions(returned_value[0], returned_value[1])
-            pos1.nextItem = LinkedList(new_coordinates1)
-            pos1 = pos1.nextItem
+    def respond(self):
+        # readable = super().respond()
+        # if readable:
+        #     for client in readable:
+        #         if client:
+        #             data = Protocol.receive_messages(client)
+        #
+        #             if data != "":
+        #                 print(data)
+        #             if data == "yus":
+        #
+        #                 returned_value = literal_eval(Protocol.receive_messages(client))
+        #                 print("returned value: ", returned_value)
+        #                 new_coordinates1, new_coordinates2 = self.calculate_positions(returned_value[0],
+        #                                                                               returned_value[1])
+        #                 print("coord",new_coordinates1)
+        #                 if len(new_coordinates1) > 0:
+        #                     self.pos1.nextItem = LinkedList(new_coordinates1)
+        #                     self.pos1 = self.pos1.nextItem
+        #
+        #                     if self.count >= 3:
+        #
+        #                         self.list1 = self.list1.nextItem
+        #                         # now start calculating trajectory of the object
+        #                         projectiles_to_alarm = self.identify_projectiles(self.list1.value, self.list1.nextItem.value,
+        #                                                                          self.pos1.value)
+        #                         print(f"these projectiles are real: {projectiles_to_alarm}")
+        #                         if projectiles_to_alarm:
+        #                             # after the projectiles had been identified, send them back to the server
+        #                             # self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(
+        #                             #     str(projectiles_to_alarm)))
+        #                             print(projectiles_to_alarm)
+        #
+        #                     self.count += 1
 
-            if count >= 3:
-                list1 = list1.nextItem
-                # now start calculating trajectory of the object
-                projectiles_to_alarm = self.identify_projectiles(list1.value, list1.nextItem.value, pos1.value)
-                print(f"these projectiles are real: {projectiles_to_alarm}")
-                if projectiles_to_alarm:
-                    # after the projectiles had been identified, send them back to the server
-                    self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str(projectiles_to_alarm)))
-
-            count += 1
-
-
-
-
+        self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str([[[1, 1, -2], [1.5, 0.1, 0], float(0.1111233545)]] )))
 
 
 def main():
-    calc_client = CalcClient()
-    calc_client.run_client()
+    # calc_client = CalcClient()
+    # calc_client.run_client()
+    calc_server = CalcServer("0.0.0.0", 8001)
+
+
+    calc_server.respond()
 
 
 if __name__ == "__main__":

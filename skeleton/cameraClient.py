@@ -102,7 +102,7 @@ class Linkudo:
 class Client:
     def __init__(self):
         self.s = s.socket()
-        self.s.connect(("127.0.0.1", 8000))
+        self.s.connect(("172.16.20.69", 8000))
 
     def send_message(self, message):
         self.s.send(message)
@@ -112,6 +112,9 @@ class SingleCamera (Maskinator):
     def __init__(self, cam_num=None, file_path=""):
         # Initialize the classes for the cam and the linked list of frames
         super().__init__(cam_num, file_path)
+        self.x = 0
+        self.y = 1.5
+        self.z = 2
 
     def remove_old_circles(self, compared_circles: List[List[int]], old_circles):
         for i in old_circles:
@@ -165,8 +168,9 @@ class SingleCamera (Maskinator):
 
                     # send the server the coordinates that the camera recognized
                     if real_findings:
+                        real_findings = [[1], real_findings]
                         message = Protocol.prepare_message("circCords")
-                        message = message + Protocol.prepare_message(str(real_findings)) + Protocol.prepare_message(str(time.time()))
+                        message = message + Protocol.prepare_message(str(real_findings)) + Protocol.prepare_message(str(time.time())) + Protocol.prepare_message(str([self.x, self.y, self.z]))
                         client.send_message(message)
                 print(len(latest_frame))
                 cv.imshow("v", image_delta)

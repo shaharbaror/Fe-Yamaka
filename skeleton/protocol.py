@@ -8,15 +8,27 @@ from nacl.utils import random
 class Protocol:
 
     @staticmethod
-    def receive_messages(soc: s.socket):
+    def receive_messages(soc: s.socket, decode=True):
+
         try:
+
             length = soc.recv(10).decode()
+
 
             if length == '':
                 return ''
             length = int(length)
 
-            return soc.recv(length).decode()
+            if decode:
+
+                msg = soc.recv(length).decode()
+                print(msg)
+                return msg
+            else:
+                msg = soc.recv(length)
+                print(msg)
+                return msg
+
         except Exception as e:
             print(e)
             return None
@@ -33,14 +45,14 @@ class Protocol:
         return (f"{length}{message}").encode()
 
 
-class Encryption:
-    def __init__(self):
-        self.box = {}     # {f"{key}": box, ...}
 
+class Encryption:
+    def __init__(self, socket):
+        self.box = None
+        self.socket = socket
         self.private_key = None
         self.public_key = None
-        self.receiver_public_keys = []  # [{"socket": socket, "public_key": public_key}, ...]
-
+        self.receiver_public_key = None
         self.public_key_bytes = None
         self.private_key_bytes = None
 
@@ -53,63 +65,49 @@ class Encryption:
         self.private_key_bytes = bytes(self.private_key)
         self.public_key_bytes = bytes(self.public_key)
 
-    def find_public_key(self, socket):
-        for k in self.receiver_public_keys:
-            if k["socket"] == socket:
-                return k["public_key"]
-        return None
-
-    def decrypt(self, encrypted_message, client):
+    def decrypt(self, encrypted_message):
         # Ensure receiver_public_key is set before decryption
-        key = self.find_public_key(client)
-
-        if not key:
+        if not self.receiver_public_key:
             raise ValueError("Receiver public key not set.")
         if not isinstance(self.private_key, PrivateKey):
             raise TypeError("self.private_key must be a PrivateKey.")
-        if not isinstance(key, PublicKey):
+        if not isinstance(self.receiver_public_key, PublicKey):
             raise TypeError("self.receiver_public_key must be a PublicKey.")
 
         try:
-            decrypted_message = self.box[f"{key}"].decrypt(encrypted_message)
+            decrypted_message = self.box.decrypt(encrypted_message)
             print(f"{decrypted_message =}")
             return decrypted_message.decode('utf-8')
         except nacl.exceptions.ValueError as e:
             print(f"connection error: {e}")
             return "connection error"
 
-    def send_key(self, socket):
+    def send_key(self):
         # Serialize public key to send it over the network
         public_key_bytes = self.public_key._bytes_()
-        msg = Protocol.prepare_message("new_key") + Protocol.prepare_message(str(public_key_bytes))
-        socket.send(msg)
+        msg = Protocol.prepare_message(public_key_bytes)
+        self.socket.send(msg)
 
-    def receive_public_key(self, socket):
-        public_key_bytes = Protocol.receive_messages(socket).encode()
+    def receive_public_key(self):
+        public_key_bytes = Protocol.receive_messages(self.socket)
         if len(public_key_bytes) != 32:
             raise ValueError("Public key must be 32 bytes.")
-        key_received = PublicKey(public_key_bytes)
-        self.receiver_public_keys.append({"socket": socket, "public_key": key_received})
-        self.create_box(key_received)
+        self.receiver_public_key = PublicKey(public_key_bytes)
 
-
-    def create_msg(self, msg, socket) -> bytes:
+    def create_msg(self, msg) -> bytes:
         # Generate a nonce of 24 bytes
         nonce = random(Box.NONCE_SIZE)
-        key = self.find_public_key(socket)
+
         # Encrypt the message with the generated nonce
-        if key:
-            return self.box[str(key)].encrypt(msg, nonce)
+        encrypted_msg = self.box.encrypt(msg, nonce)
 
         # Return nonce + ciphertext
-        return b''
+        return encrypted_msg
 
-    def send_encrypted_msg(self, msg, socket):
+    def send_encrypted_msg(self, msg):
         encrypted_msg = self.create_msg(msg)
-        msg = Protocol.prepare_message(str(encrypted_msg))
-        socket.send(msg)
+        msg = str(len(encrypted_msg)).zfill(10).encode() + encrypted_msg
+        self.socket.send(msg)
 
-    def create_box(self, key):
-        self.box[f"{key}"] = Box(self.private_key, key)
-
-
+    def create_box(self):
+        self.box = Box(self.private_key, self.receiver_public_key)

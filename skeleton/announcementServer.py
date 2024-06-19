@@ -8,6 +8,7 @@ from protocol import Protocol, Encryption
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
+from ast import literal_eval
 uri = "mongodb+srv://shaharbaror1:5CKlFQnQ3rK4TLNe@cluster0.tvuwsdx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 
@@ -49,23 +50,30 @@ class AnnouncementServer(Server, DataBase):
         self.projectile_list = []
         self.position_list = []
         self.when_to_check = time.time() + 5
+        self.client_list = []
         #need a map of all the places names and their positions
 
     def alert_city(self, city):
         for p in self.position_list:
             if p["city"] == city:
-                self.encryption.send_encrypted_msg("alert", p["client"])
+                p["enc"].send_encrypted_msg("alert", p["client"])
 
     def calculate_trajectory(self, projectiles_detected):
         landing_positions = []
 
         # calculate where and when the object is going to land
+        print(projectiles_detected)
         for i in projectiles_detected:
-            y_velocity = projectiles_detected[1][1]
+            print(f"ai ai ai {i}")
+            y_velocity = i[1][1]
             time_left = (y_velocity + np.sqrt(y_velocity ** 2 + 19.62)) / 9.81
+            print(f"the land of the ones time: {time_left}")
+            print(i)
             if time_left > 0:
-                landing_positions.append(
-                    [[i[0][0] + i[1][0] * time_left, 0, i[0][2] + i[1][2] * time_left], i[2] + time_left])
+                pos = [[i[0][0] + i[1][0] * time_left, 0, i[0][2] + i[1][2] * time_left], i[2] + time_left]
+                print(f"pos pos pos {pos}")
+                landing_positions.append( pos
+                    )
 
         # verify that the objects found are indeed new and not the same ones
         for i in landing_positions:
@@ -88,6 +96,7 @@ class AnnouncementServer(Server, DataBase):
                     self.projectile_list.remove(p)
         # add all the extra detections to the list of projectiles
         self.projectile_list.extend(landing_positions)
+        print(self.projectile_list)
 
     def respond(self):
         readable = super().respond()
@@ -96,19 +105,34 @@ class AnnouncementServer(Server, DataBase):
             for client in readable:
                 if client:
                     data = Protocol.receive_messages(client)
+                    client_enc = None
+                    for c in self.client_list:
+                        if c["client"] == client:
+                            client_enc = c["enc"]
+
+                    if data:
+                        print(data)
+
+                    if client_enc:
+                        data = client_enc.decrypt(data)
 
                     if data == "newPos":
-                        projectiles_detected = Protocol.receive_messages(client)
+                        projectiles_detected = literal_eval(Protocol.receive_messages(client))
+                        print(f"detected ones: {projectiles_detected}")
                         self.calculate_trajectory(projectiles_detected)
                     elif data == "signup":
                         user_data = Protocol.receive_messages(client)
-                        self.position_list.append({"city":user_data[0], "client": client, "key": user_data[1]})
+                        user_data = client_enc.decrypt(user_data)
+                        user_data = literal_eval(user_data)
+                        self.position_list.append({"city": user_data[0], "client": client, "enc": client_enc})
                     elif data == "new_key":
-                        self.encryption.receive_public_key(client)
-                        self.encryption.send_key(client)
-                    elif data == "leave":
-                        user_data = Protocol.receive_messages(client)
-                        self.position_list.remove({"city":user_data[0], "client": client, "key": user_data[1]})
+                        new_Encryption = Encryption(client)
+                        new_Encryption.create_keys()
+                        new_Encryption.receive_public_key()
+                        new_Encryption.create_box()
+                        new_Encryption.send_key()
+                        self.client_list.append({"client": client, "enc": new_Encryption})
+
 
 
 def main():

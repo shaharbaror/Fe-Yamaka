@@ -1,12 +1,15 @@
 import json
 import random
 import socket as s
+
+import numpy as np
 from select import select
 from protocol import Protocol, Encryption
 from main3 import Maskinator
 import multiprocessing
 import imutils
 import time
+from ast import literal_eval
 
 
 
@@ -33,8 +36,6 @@ class Server:
         self.s.listen(9)
         self.clients = {}
         self.running = True
-        self.encryption = Encryption()
-        self.encryption.create_keys()
 
     def accept_connections(self):
 
@@ -65,8 +66,9 @@ class MainServer(Server):
 
     def respond(self):
         readable = super().respond()
-        received_axis = [None,None]
+        received_axis = [None, None]
         axis_counter = 0
+        latest_update = time.time()
         if readable:
             for client in readable:
                 if client:
@@ -74,32 +76,45 @@ class MainServer(Server):
 
                     # if data == circAxis the camera client has sent the coordinates of the circles they found
                     if data == "circCords":
-                        axis = Protocol.receive_messages(client)
-                        time_of_cords = Protocol.receive_messages(client)
+                        axis = literal_eval( Protocol.receive_messages(client))
+                        time_of_cords =literal_eval( Protocol.receive_messages(client))
+                        camera_position = literal_eval(Protocol.receive_messages(client))
                         print(f"Got Cords: {axis}")
                         # add the coordinates and increase the counter
+
+                        if time_of_cords - latest_update >= 1:
+                            received_axis = [None, None]
+
                         if axis[0] == [1]:
-                            received_axis[0] = [axis[1:], time_of_cords]
+                            print("axus", axis[1])
+                            received_axis[0] = [axis[1], time_of_cords, camera_position]
+                            self.timer[0] = time_of_cords
+                            latest_update = time.time()
                         else:
-                            received_axis[1] = [axis[1:], time_of_cords]
+                            print("axiux", axis[1])
+                            received_axis[1] = [axis[1], time_of_cords, camera_position]
+                            self.timer[1] = time_of_cords
+                            latest_update = time.time()
 
-                        axis_counter += 1
-                    if data == "give_key":
-                        self.encryption.send_encrypted_msg(str(self.encryption.public_key_bytes), client)
-                    elif data == "ready_calculate":
-                        self.encryption.send_encrypted_msg(str(self.linked_list.value), client)
-                        self.linked_list = self.linked_list.next_block
 
-            if axis_counter > 1:
+
+
+            jus = np.absolute(self.timer[1] - self.timer[0])
+            print(jus)
+            if jus < 50 and received_axis[0] and received_axis[1]:
+
+                print("here")
                 #  call the client that calculates positions ____________________________________
                 self.pos.next_block = LinkedList(received_axis)
                 self.pos = self.pos.next_block
+                self.linked_list = self.linked_list.next_block
+                print(self.linked_list.value)
 
-                if not self.linked_list.value:
-                    self.linked_list = self.linked_list.next_block
+                self.s2.send(Protocol.prepare_message("yus") + Protocol.prepare_message(str(self.linked_list.value)))
+
 
             axis_counter = 0
-            received_axis = []
+
 
 
 def main():
