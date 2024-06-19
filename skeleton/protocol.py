@@ -34,14 +34,19 @@ class Protocol:
             return None
 
     @staticmethod
-    def prepare_message(message):
+    def prepare_message(message, is_bytes=False):
         """
         This function receives a message and returns it formatted and ready to send
         :param message: The message to prepare
-        :type message: str
+        :type message: str or bytes
         :return: bytes
         """
         length = str(len(message)).zfill(10)
+        if is_bytes:
+            msg = length.encode() + message
+            print(msg + b"KJJJJJJJJJJJJJJJJJJJJJJJJJJJ")
+            return msg
+
         return (f"{length}{message}").encode()
 
 
@@ -84,12 +89,14 @@ class Encryption:
 
     def send_key(self):
         # Serialize public key to send it over the network
-        public_key_bytes = self.public_key._bytes_()
-        msg = Protocol.prepare_message(public_key_bytes)
+        public_key_bytes = self.public_key.__bytes__()
+        print(public_key_bytes)
+        msg = Protocol.prepare_message(public_key_bytes, True)
+        print("msg",msg)
         self.socket.send(msg)
 
     def receive_public_key(self):
-        public_key_bytes = Protocol.receive_messages(self.socket)
+        public_key_bytes = Protocol.receive_messages(self.socket, False)
         if len(public_key_bytes) != 32:
             raise ValueError("Public key must be 32 bytes.")
         self.receiver_public_key = PublicKey(public_key_bytes)

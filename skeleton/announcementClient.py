@@ -167,21 +167,21 @@ class AlertClient:
         self.s.connect((address, port))
         self.location = location
         self.is_running = True
-        self.encryption = Encryption()
+        self.encryption = Encryption(self.s)
         self.encryption.create_keys()
 
     def setup_encryption(self):
-        self.encryption.send_key(self.s)
+        self.encryption.send_key()
         response = Protocol.receive_messages(self.s)
         print(response)
         if response == "new_key":
-            self.encryption.receive_public_key(self.s)
+            self.encryption.receive_public_key()
 
 
     def register_to_server(self):
 
         self.setup_encryption()
-        self.s.send(Protocol.prepare_message("signup") + self.encryption.create_msg(self.location, self.s))
+        self.s.send(Protocol.prepare_message("signup") + self.encryption.create_msg(self.location))
 
     def run(self):
 
@@ -190,7 +190,7 @@ class AlertClient:
         while True:
             try:
                 enc_message = Protocol.receive_messages(self.s)
-                decr_message = self.encryption.decrypt(enc_message, self.s)
+                decr_message = self.encryption.decrypt(enc_message)
                 if decr_message == "alert":
                     print("ALERT")
                 elif decr_message == "stop":
