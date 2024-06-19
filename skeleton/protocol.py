@@ -91,7 +91,7 @@ class Encryption:
         # Serialize public key to send it over the network
         public_key_bytes = self.public_key.__bytes__()
         print(public_key_bytes)
-        msg = Protocol.prepare_message(public_key_bytes, True)
+        msg = Protocol.prepare_message("send_key") + Protocol.prepare_message(public_key_bytes, True)
         print("msg",msg)
         self.socket.send(msg)
 
