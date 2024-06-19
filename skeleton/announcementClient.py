@@ -174,14 +174,16 @@ class AlertClient:
         self.encryption.send_key()
         response = Protocol.receive_messages(self.s)
         print(response)
-        if response == "new_key":
+        if response == "send_key":
             self.encryption.receive_public_key()
+            print("block")
+            self.encryption.create_box()
 
 
     def register_to_server(self):
 
         self.setup_encryption()
-        self.s.send(Protocol.prepare_message("signup") + self.encryption.create_msg(self.location))
+        self.s.send(self.encryption.create_msg("signup".encode()) + self.encryption.create_msg(str(self.location).encode()))
 
     def run(self):
 
