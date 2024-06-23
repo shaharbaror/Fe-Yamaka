@@ -40,7 +40,6 @@ class CalcClient:
             returned_value = self.send_message("ready_calculate")
 
 
-
 class CalcServer(Server):
     def __init__(self, address, port):
         super().__init__(address, port)
@@ -188,7 +187,7 @@ class CalcServer(Server):
         #                     self.count += 1
 
         # [(x, y, z), (Vx, Vy, Vz), time of record]
-        self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str([[[1, 1, 1], [4.33, 2.5, 0], float(0.1111233545)]])))
+        self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str([[[1, 1, 1], [1.33, 2.5, 0], float(0.1111233545)]])))
 
 
 def main():

@@ -131,10 +131,13 @@ class SingleCamera (Maskinator):
 
         delta = np.absolute(new_frame - old_frame)
 
-        threshold = 230
-        min_amount = 10
+        threshold = 240
+        minimum = 10
+
         delta[delta > threshold] = 0
-        delta[delta < min_amount] = 0
+        delta[delta < minimum] = 0
+
+
         return delta
 
     def record_cam(self, client: Client):
@@ -187,7 +190,7 @@ class SingleCamera (Maskinator):
 
 def main():
     client = Client()
-    single_cam = SingleCamera(file_path="../3DCameras/Cam01/new_rec1_Trim.mp4")
+    single_cam = SingleCamera(file_path="../3DCameras/Cam01/rec01.mp4")
     single_cam.record_cam(client)
 
 

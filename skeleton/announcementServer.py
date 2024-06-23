@@ -12,6 +12,7 @@ from ast import literal_eval
 uri = "mongodb+srv://shaharbaror1:5CKlFQnQ3rK4TLNe@cluster0.tvuwsdx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 
+
 #5CKlFQnQ3rK4TLNe
 #shaharbaror1
 class DataBase:
@@ -28,10 +29,10 @@ class DataBase:
         try:
             self.database = self.client["fulldb"]
             self.is_connected = True
-            return "connection successful"
+            return "connection successful", True
         except Exception as e:
             print(e)
-        return "connection failed"
+        return "connection failed", False
 
     def get_all_cities(self):
         locations = self.database["locations"]
@@ -46,12 +47,16 @@ class DataBase:
 
 class AnnouncementServer(Server, DataBase):
     def __init__(self, address, port):
-        super().__init__(address, port)
+        Server.__init__(self, address, port)
+        DataBase.__init__(self)
+        
         self.projectile_list = []
         self.position_list = []
         self.when_to_check = time.time() + 5
         self.client_list = []
         #need a map of all the places names and their positions
+
+
 
     def alert_city(self, city):
         for p in self.position_list:
@@ -84,9 +89,9 @@ class AnnouncementServer(Server, DataBase):
             if is_on_list:
                 landing_positions.remove(i)
 
-        # for l in landing_positions:
-        #     city_to_warn = self.get_in_pos(l)
-        #     self.alert_city(city_to_warn)
+        for l in landing_positions:
+            city_to_warn = self.get_in_pos(l)
+            self.alert_city(city_to_warn)
 
         # remove all of the old projectiles
         curr_time = time.time()
@@ -146,6 +151,10 @@ class AnnouncementServer(Server, DataBase):
 
 def main():
     server = AnnouncementServer("0.0.0.0", 8001)
+    while not server.is_connected:
+        message, server.is_connected = server.connect_to_database()
+        print(message)
+    server.get_all_cities()
     while server.running:
         server.accept_connections()
         server.respond()
