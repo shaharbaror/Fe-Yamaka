@@ -187,7 +187,7 @@ class CalcServer(Server):
         #
         #                     self.count += 1
 
-        self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str([[[1, 1, -2], [1.5, 0.1, 0], float(0.1111233545)]] )))
+        self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str([[[1, 1, -2], [1.5, 0.1, 0], float(0.1111233545)]])))
 
 
 def main():

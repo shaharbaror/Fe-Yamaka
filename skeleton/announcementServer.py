@@ -104,34 +104,49 @@ class AnnouncementServer(Server, DataBase):
         if readable:
             for client in readable:
                 if client:
-                    data = Protocol.receive_messages(client)
+                    print("K")
+                    data = Protocol.receive_messages(client, False)
                     client_enc = None
-                    for c in self.client_list:
-                        if c["client"] == client:
-                            client_enc = c["enc"]
-
                     if data:
+                        print(self.client_list)
+                        for c in self.client_list:
+                            print("in here")
+                            if c["client"] == client:
+                                client_enc = c["enc"]
+                        print("BLOCK NUMBER 1")
                         print(data)
+                        print(client_enc)
+                        if  client_enc != None:
 
-                    if client_enc:
-                        data = client_enc.decrypt(data)
+                            data = client_enc.decrypt(data)
 
-                    if data == "newPos":
-                        projectiles_detected = literal_eval(Protocol.receive_messages(client))
-                        print(f"detected ones: {projectiles_detected}")
-                        self.calculate_trajectory(projectiles_detected)
-                    elif data == "signup":
-                        user_data = Protocol.receive_messages(client)
-                        user_data = client_enc.decrypt(user_data)
-                        user_data = literal_eval(user_data)
-                        self.position_list.append({"city": user_data[0], "client": client, "enc": client_enc})
-                    elif data == "new_key":
-                        new_Encryption = Encryption(client)
-                        new_Encryption.create_keys()
-                        new_Encryption.receive_public_key()
-                        new_Encryption.create_box()
-                        new_Encryption.send_key()
-                        self.client_list.append({"client": client, "enc": new_Encryption})
+
+                        if data == "newPos":
+                            projectiles_detected = literal_eval(Protocol.receive_messages(client))
+                            print(f"detected ones: {projectiles_detected}")
+                            self.calculate_trajectory(projectiles_detected)
+                        elif data == "signup":
+                            print("OHVVVE")
+                            user_data = Protocol.receive_messages(client, False)
+                            print(user_data)
+                            user_data = client_enc.decrypt(user_data)
+                            print(user_data)
+
+                            self.position_list.append({"city": user_data, "client": client, "enc": client_enc})
+                            print("done")
+                        elif data == b"send_key":
+                            print("here2")
+                            new_Encryption = Encryption(client)
+                            new_Encryption.create_keys()
+                            print("here")
+                            new_Encryption.receive_public_key()
+                            print("there")
+                            new_Encryption.create_box()
+                            print("NO")
+                            new_Encryption.send_key()
+                            print("reallu? hear?")
+                            self.client_list.append({"client": client, "enc": new_Encryption})
+                            print("appended!", self.client_list)
 
 
 

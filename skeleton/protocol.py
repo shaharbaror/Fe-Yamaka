@@ -11,23 +11,20 @@ class Protocol:
     def receive_messages(soc: s.socket, decode=True):
 
         try:
-
-            length = soc.recv(10).decode()
-
-
-            if length == '':
+            length = soc.recv(10)
+            if length == b'':
                 return ''
-            length = int(length)
 
+            length = int(length.decode())
+            msg = soc.recv(length)
+
+            while len(msg) < length:
+                extra = soc.recv(length - len(msg))
+                msg += extra
+            print(msg)
             if decode:
-
-                msg = soc.recv(length).decode()
-                print(msg)
-                return msg
-            else:
-                msg = soc.recv(length)
-                print(msg)
-                return msg
+                return msg.decode()
+            return msg
 
         except Exception as e:
             print(e)
@@ -44,7 +41,6 @@ class Protocol:
         length = str(len(message)).zfill(10)
         if is_bytes:
             msg = length.encode() + message
-            print(msg + b"KJJJJJJJJJJJJJJJJJJJJJJJJJJJ")
             return msg
 
         return (f"{length}{message}").encode()
@@ -80,6 +76,7 @@ class Encryption:
             raise TypeError("self.receiver_public_key must be a PublicKey.")
 
         try:
+
             decrypted_message = self.box.decrypt(encrypted_message)
             print(f"{decrypted_message =}")
             return decrypted_message.decode('utf-8')
@@ -90,9 +87,9 @@ class Encryption:
     def send_key(self):
         # Serialize public key to send it over the network
         public_key_bytes = self.public_key.__bytes__()
-        print(public_key_bytes)
+
         msg = Protocol.prepare_message("send_key") + Protocol.prepare_message(public_key_bytes, True)
-        print("msg",msg)
+
         self.socket.send(msg)
 
     def receive_public_key(self):
@@ -113,7 +110,7 @@ class Encryption:
 
     def send_encrypted_msg(self, msg):
         encrypted_msg = self.create_msg(msg)
-        msg = str(len(encrypted_msg)).zfill(10).encode() + encrypted_msg
+        msg = Protocol.prepare_message(encrypted_msg, True)
         self.socket.send(msg)
 
     def create_box(self):

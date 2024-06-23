@@ -63,6 +63,10 @@ class MainServer(Server):
         super().__init__(address, port)
         self.linked_list = LinkedList()
         self.pos = self.linked_list
+        self.timer = [time.time() - 333, time.time() - 666]
+        self.s2 = s.socket()
+        self.s2.connect(("172.16.6.128",8002))
+
 
     def respond(self):
         readable = super().respond()
