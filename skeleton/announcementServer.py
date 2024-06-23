@@ -40,8 +40,8 @@ class DataBase:
 
     def get_in_pos(self, position):
         for l in self.cities:
-            if l["position-min"] < position < l["position-max"]:
-                return l["position"]
+            if l["position-min"] < position[0] < l["position-max"]:
+                return l["city"]
         return None
 
 
