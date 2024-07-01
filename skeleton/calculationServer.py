@@ -194,8 +194,6 @@ def main():
     # calc_client = CalcClient()
     # calc_client.run_client()
     calc_server = CalcServer("0.0.0.0", 8001)
-
-
     calc_server.respond()
 
 

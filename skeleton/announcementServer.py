@@ -37,17 +37,19 @@ class DataBase:
 
     def get_all_cities(self):
         locations = self.database["locations"]
-        self.cities = locations.find()  # get all of the registered locations from the db
+        self.cities = tuple(locations.find())  # get all of the registered locations from the db
 
     def get_in_pos(self, position):
-        print("posi pos pos",position[0])
+        print("posi pos pos", position[0])
 
         for l in self.cities:
             print(f"the first position is between {l["position-min"]} and {l["position-max"]}")
             print(f"also {l["position-min"] < position[0]} and {l["position-max"] > position[0]}")
+
             if l["position-min"] < position[0] < l["position-max"]:
-                city_name = l["city"]
-                return city_name
+                print(self.cities, "these are cities")
+                return l["city"]
+
         return None
 
 
@@ -57,7 +59,7 @@ class AnnouncementServer(Server, DataBase):
         DataBase.__init__(self)
         
         self.projectile_list = []
-        self.position_list = []
+        self.position_list = {}
         self.when_to_check = time.time() + 5
         self.client_list = []
         #need a map of all the places names and their positions
@@ -65,21 +67,12 @@ class AnnouncementServer(Server, DataBase):
 
 
     def alert_city(self, city):
-        for p in self.position_list:
-            if p["city"] == city:
-                print("found city")
-                message = p["enc"].create_msg(b"alert")
-                p["client"].send(Protocol.prepare_message(message, True))
+        for client in self.position_list[str(city)]:
+            print("found city")
+            message = client["enc"].create_msg(b"alert")
+            client["client"].send(Protocol.prepare_message(message, True))
 
     def calculate_trajectory(self, projectiles_detected):
-
-        # remove all of the old projectiles
-        curr_time = time.time()
-        if self.when_to_check <= curr_time:
-            for p in self.projectile_list:
-                if p[1] < curr_time:
-                    self.projectile_list.remove(p)
-
 
         landing_positions = []
 
@@ -90,12 +83,10 @@ class AnnouncementServer(Server, DataBase):
             y_velocity = i[1][1]
             time_left = (y_velocity + np.sqrt(y_velocity ** 2 + 19.62)) / 9.81
 
-
             if time_left > 0:
                 pos = [[i[0][0] + i[1][0] * time_left, 0, i[0][2] + i[1][2] * time_left], i[2] + time_left]
 
-                landing_positions.append( pos
-                    )
+                landing_positions.append(pos)
 
         # verify that the objects found are indeed new and not the same ones
         for i in landing_positions:
@@ -151,10 +142,11 @@ class AnnouncementServer(Server, DataBase):
 
                             user_data = Protocol.receive_messages(client, False)
 
-                            user_data = client_enc.decrypt(user_data)
+                            user_data = str(client_enc.decrypt(user_data))
                             print("got to here")
-
-                            self.position_list.append({"city": user_data, "client": client, "enc": client_enc})
+                            if not self.position_list.get(user_data):
+                                self.position_list[user_data] = []
+                            self.position_list[user_data].append({"client": client, "enc": client_enc})
                             print("added: ", self.position_list)
 
                         elif data == b"send_key":
@@ -179,8 +171,16 @@ def main():
         print(message)
     server.get_all_cities()
     while server.running:
+
         server.accept_connections()
         server.respond()
+
+        # remove all of the old projectiles
+        curr_time = time.time()
+        if server.when_to_check <= curr_time:
+            for p in server.projectile_list:
+                if p[1] < curr_time:
+                    server.projectile_list.remove(p)
 
 if __name__ == "__main__":
     main()
