@@ -2,6 +2,7 @@ import socket as s
 from mainServer import Server
 from protocol import Protocol
 import numpy as np
+import time
 from ast import literal_eval
 
 
@@ -42,24 +43,23 @@ class CalcClient:
 
 class CalcServer(Server):
     def __init__(self, address, port):
-        super().__init__(address, port)
+        # super().__init__(address, port)
         self.list1 = LinkedList()
         self.pos1 = self.list1
         self.count = 0
         self.s2 = s.socket()
-        self.s2.connect(("172.16.20.69", 8001))
+        self.s2.connect(("127.0.0.1", 8001))
 
-
-    def calculate_positions(self, cam1_positions, cam2_positions): # [[x,y], time]
+    def calculate_positions(self, cam1_positions, cam2_positions):  # [[[x,y]], time, camera postion]
         cam01_positions = []
         cam02_positions = []
 
         print("cam1", cam1_positions)
         print("cam2", cam2_positions)
 
-        width1 = 1240
+        width1 = 1240   # depends on the width of the frame
         width2 = 1240
-        height = 1080
+        height = 1080   # height of the frame
         height1 = width1 / 2
         height2 = width2 / 2
 
@@ -187,7 +187,7 @@ class CalcServer(Server):
         #                     self.count += 1
 
         # [(x, y, z), (Vx, Vy, Vz), time of record]
-        self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str([[[1, 1, 1], [1.33, 2.5, 0], float(0.1111233545)]])))
+        self.s2.send(Protocol.prepare_message("newPos") + Protocol.prepare_message(str([[[1, 1, 1], [1.33, 2.5, 0], time.time()]])))
 
 
 def main():

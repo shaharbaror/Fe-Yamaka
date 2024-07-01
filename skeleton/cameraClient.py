@@ -131,7 +131,7 @@ class SingleCamera (Maskinator):
 
         delta = np.absolute(new_frame - old_frame)
 
-        threshold = 240
+        threshold = 250
         minimum = 10
 
         delta[delta > threshold] = 0

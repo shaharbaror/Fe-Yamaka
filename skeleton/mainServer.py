@@ -63,16 +63,20 @@ class MainServer(Server):
         super().__init__(address, port)
         self.linked_list = LinkedList()
         self.pos = self.linked_list
+
         self.timer = [time.time() - 333, time.time() - 666]
+        self.latest_update = time.time()
+
+        self.received_axis = [None, None]
+
         self.s2 = s.socket()
-        self.s2.connect(("172.16.6.128",8002))
+        self.s2.connect(("172.16.6.128", 8002))
 
 
     def respond(self):
         readable = super().respond()
-        received_axis = [None, None]
-        axis_counter = 0
-        latest_update = time.time()
+
+
         if readable:
             for client in readable:
                 if client:
@@ -81,43 +85,38 @@ class MainServer(Server):
                     # if data == circAxis the camera client has sent the coordinates of the circles they found
                     if data == "circCords":
                         axis = literal_eval( Protocol.receive_messages(client))
-                        time_of_cords =literal_eval( Protocol.receive_messages(client))
+                        time_of_cords =literal_eval(Protocol.receive_messages(client))
                         camera_position = literal_eval(Protocol.receive_messages(client))
                         print(f"Got Cords: {axis}")
                         # add the coordinates and increase the counter
 
-                        if time_of_cords - latest_update >= 1:
-                            received_axis = [None, None]
+                        if time_of_cords - self.latest_update >= 1:
+                            self.received_axis = [None, None]
 
                         if axis[0] == [1]:
                             print("axus", axis[1])
-                            received_axis[0] = [axis[1], time_of_cords, camera_position]
+                            self.received_axis[0] = [axis[1], time_of_cords, camera_position]
                             self.timer[0] = time_of_cords
-                            latest_update = time.time()
+                            self.latest_update = time.time()
                         else:
                             print("axiux", axis[1])
-                            received_axis[1] = [axis[1], time_of_cords, camera_position]
+                            self.received_axis[1] = [axis[1], time_of_cords, camera_position]
                             self.timer[1] = time_of_cords
-                            latest_update = time.time()
-
-
-
+                            self.latest_update = time.time()
 
             jus = np.absolute(self.timer[1] - self.timer[0])
             print(jus)
-            if jus < 50 and received_axis[0] and received_axis[1]:
+            if jus < 1 and self.received_axis[0] and self.received_axis[1]:
 
                 print("here")
                 #  call the client that calculates positions ____________________________________
-                self.pos.next_block = LinkedList(received_axis)
+                self.pos.next_block = LinkedList(self.received_axis)
                 self.pos = self.pos.next_block
                 self.linked_list = self.linked_list.next_block
                 print(self.linked_list.value)
 
                 self.s2.send(Protocol.prepare_message("yus") + Protocol.prepare_message(str(self.linked_list.value)))
 
-
-            axis_counter = 0
 
 
 

@@ -183,7 +183,10 @@ class AlertClient:
     def register_to_server(self):
 
         self.setup_encryption()
-        self.s.send(self.encryption.create_msg("signup".encode()) + self.encryption.create_msg(str(self.location).encode()))
+        order = Protocol.prepare_message(self.encryption.create_msg("signup".encode()), True)
+        values = Protocol.prepare_message(self.encryption.create_msg(str(self.location).encode()), True)
+        self.s.send(order + values)
+        print("here")
 
     def run(self):
 
@@ -191,7 +194,7 @@ class AlertClient:
 
         while True:
             try:
-                enc_message = Protocol.receive_messages(self.s)
+                enc_message = Protocol.receive_messages(self.s, False)
                 decr_message = self.encryption.decrypt(enc_message)
                 if decr_message == "alert":
                     print("ALERT")
@@ -206,7 +209,8 @@ class AlertClient:
 def main():
     # announcemnet_client = AnnouncementClient("0.0.0.0", 8002)
     # announcemnet_client.run_client()
-    alert_client = AlertClient("172.16.20.69", 8001, "Tel-Aviv")
+    # alert_client = AlertClient("172.16.20.69", 8001, "Tel-Aviv")
+    alert_client = AlertClient("127.0.0.1", 8001, "Netanya")
     alert_client.run()
 
 if __name__ == "__main__":
